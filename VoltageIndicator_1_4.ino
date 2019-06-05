@@ -1,6 +1,6 @@
 /*
 This regulator is developed with the goal to optimize the working of a heating system pump.
-It has three voltage sensors with galvanic deviding trafos which are connected to the servo valves of the heating lines. 
+It has three voltage sensors with galvanic dividing trafos which are connected to the servo valves of the heating lines. 
 In case there is 220V on the sensor input the /uC recieves an AC signal from 0 to 5 V of the amplitude.
 The signal from three sensors are being evaluating and a control command will be issued to the relay in folloving cases:
 - at lease one of the sensors has 220V on its input, the relay should be set to the ON-status
