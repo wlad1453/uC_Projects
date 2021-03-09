@@ -39,6 +39,8 @@ void setup() {
   Serial.begin(115200);  
 
   timer_init_ISR_1KHz(TIMER_DEFAULT);
+
+  randomSeed(analogRead(1));
   
   sin_sim(samp, maxSampNum, amplitude);           // Samples array initialization
   frameTimer = micros();                          // Initial timers setup
@@ -91,6 +93,8 @@ void loop() {
      Serial.print(F("EffCoeff: ")); Serial.print( sq( amplitude / effValue ) ); Serial.print("\t");
      Serial.print( amplitude / effValue ); Serial.print("\t");
      Serial.print(F("Frequency: ")); Serial.println( frequency, 2 ); 
+
+     sin_sim(samp, maxSampNum, amplitude);  
      
      k = 0;
      frameTimer = micros();
@@ -100,12 +104,13 @@ void loop() {
 
 void sin_sim(int samples[], int sampNum, int ampl) {
   long int sampSum(0);
-  float phase = random( 2 * M_PI );
+  float phase = random( 360 ) * M_PI / 180;
    for (int i = 0; i < sampNum; i++) {
     samples[i] = 512 + ampl * sin(phase + 2 * M_PI / 20 * i);   
     sampSum += samples[i];
     // Serial.println(samples[i]); 
    }
+   Serial.print(F("Phase: ")); Serial.print( phase * 180 / M_PI ); Serial.print(" degrees\n");
   }
 
 void effectiveValue(int samples[], int sampNum, float *frequency, float *effectiveValue) { 
