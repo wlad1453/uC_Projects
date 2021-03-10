@@ -8,13 +8,11 @@
 
 
 #include <math.h>
-
 #include "timer-api.h"
 
-// #define Pi 3.1415926535
 #define maxSampNum 200                // Number of samples. By 50 Hz it means 10 full signal periods with 20 samples within a period.
   
-int       amplitude = 496;
+int                 amplitude = 496;
 
 int                 samp[maxSampNum];
 int                 sampA[maxSampNum];
@@ -22,7 +20,6 @@ unsigned int        sPeriod[maxSampNum];
 float               frequency(0); 
 float               effValue(0);
 unsigned long       frameTimer, sampleTimer, period;
-uint32_t            n;
 int                 k(0);
 
 bool                timerSet = false;
@@ -69,17 +66,16 @@ void loop() {
   if ( k == maxSampNum ) {
     noInterrupts();
     sampleTimer = micros(); 
-  
+    period = sampleTimer - frameTimer;
+    
     Serial.println(F("\nSampling done")); 
   
     for (int i = 0; i < maxSampNum; i++ ) {
       Serial.print(sPeriod[i]); Serial.print("\t");
       if ( i != 0 && !((i+1) % 10) ) Serial.print("\n");
     }
-    Serial.print("\n");
-    
-     
-    period = sampleTimer - frameTimer;
+    Serial.print("\n");    
+   
     Serial.print(F("Sampling duration: ")); Serial.print( period ); Serial.print(" uS\t");   
     Serial.print(F("One sample: ")); Serial.print( period / ( maxSampNum - 1 ) ); Serial.print(" uS\t");
       
@@ -94,10 +90,10 @@ void loop() {
      Serial.print( amplitude / effValue ); Serial.print("\t");
      Serial.print(F("Frequency: ")); Serial.println( frequency, 2 ); 
 
-     sin_sim(samp, maxSampNum, amplitude);  
+     sin_sim(samp, maxSampNum, amplitude);        // Signal simulation
      
-     k = 0;
-     frameTimer = micros();
+     k = 0;                                       // Resetting sample counter
+     frameTimer = micros();                       // Resetting frame timer
      interrupts();
   } // if ( k == maxSampNum )
 } // End loop()
@@ -106,7 +102,7 @@ void sin_sim(int samples[], int sampNum, int ampl) {
   long int sampSum(0);
   float phase = random( 360 ) * M_PI / 180;
    for (int i = 0; i < sampNum; i++) {
-    samples[i] = 512 + ampl * sin(phase + 2 * M_PI / 20 * i);   
+    samples[i] = 512 + ampl * sin(phase + 2 * M_PI / 20 * i) + random( 10 );   
     sampSum += samples[i];
     // Serial.println(samples[i]); 
    }
@@ -165,8 +161,8 @@ void timer_handle_interrupts(int timer) {
   unsigned long _period = _time - prev_time;
   prev_time = _time;
 
-  if ( k == 0 ) sPeriod[k] = 0;       
-  else sPeriod[k] = _period;            
+  if ( k == 0 ) sPeriod[k] = 0;                 // The first measurement has no previous event
+  else sPeriod[k] = _period;                    // The period between two sampling events
 
   sampA[k] = analogRead(A0);                    // Reading duration - 114 uS     
   k++;                                          // Global sample counter
