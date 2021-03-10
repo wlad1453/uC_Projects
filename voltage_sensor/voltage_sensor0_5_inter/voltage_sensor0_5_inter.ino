@@ -25,17 +25,10 @@ int                 k(0);
 bool                timerSet = false;
 bool                sampling = false;
 
-/*
-typedef struct {
-  int i;
-  float f;
-  } myStruct;
-  */
-
 void setup() {
   Serial.begin(115200);  
 
-  timer_init_ISR_1KHz(TIMER_DEFAULT);
+  timer_init_ISR_1KHz(TIMER_DEFAULT);             // Sampling period is 1 S / 1000 = 1 mS = 1000 uS
 
   randomSeed(analogRead(1));
   
@@ -104,48 +97,52 @@ void sin_sim(int samples[], int sampNum, int ampl) {
    for (int i = 0; i < sampNum; i++) {
     samples[i] = 512 + ampl * sin(phase + 2 * M_PI / 20 * i) + random( 10 );   
     sampSum += samples[i];
-    // Serial.println(samples[i]); 
+    // Serial.print(samples[i]); Serial.print("\t"); 
    }
-   Serial.print(F("Phase: ")); Serial.print( phase * 180 / M_PI ); Serial.print(" degrees\n");
-  }
+   // Serial.print(F("Phase: ")); Serial.print( phase * 180 / M_PI ); Serial.print(" degrees\n");
+}
 
 void effectiveValue(int samples[], int sampNum, float *frequency, float *effectiveValue) { 
   float sampSum(0), average(0);
-  float dev;                                    // Signal deviation from the average. Can be positive and negative
-  bool positiveHalfWave, lastHalfWave, zeroCrossing;
+  float dev;                                    // Signal deviation from the average. Can be positive or negative
+  bool halfWavePositive, lastHalfWavePositive;
   float zeroCrossingTime;
-  uint8_t cross(0), beat(0);
+  uint8_t cross(0);     // Number of zero crosses from the begin of the sampling
+  uint8_t beat(0);      // sample number (?), step (?)
   
   
   for (int i = 0; i < sampNum; i++) {          // Sum of ADC values
       sampSum += samples[i];
     }
-   average = sampSum / sampNum;                 // Average value determination
-   sampSum = 0;
+  average = sampSum / sampNum;                 // Average value determination
+  sampSum = 0;                                 // It will be used later for the sum of squers
 
   for (int i = 0; i < sampNum; i++) {
     dev = samples[i] - average;
-    if ( dev >= 0 ) positiveHalfWave = true; 
-    else positiveHalfWave = false;
+    
+    if ( dev >= 0 ) halfWavePositive = true;    // Determines whether the half wave is positive or negative
+    else halfWavePositive = false;
 
-    if( i == 0 ) lastHalfWave = positiveHalfWave;
+    if( i == 0 ) lastHalfWavePositive = halfWavePositive;     // Initial status. First sample has no previous value
 
-    if ( positiveHalfWave != lastHalfWave ) {         // Zero crossing detection
-      zeroCrossing = true;
-        
+    if ( halfWavePositive != lastHalfWavePositive ) {         // Zero crossing condition
+
       if (cross == 0) {
-        zeroCrossingTime = dev / (samples[i-1] - samples[i]);         // Zero crossing time TO the [i]th sample
-        beat = i;                                                     // Time of the [i]th sample    
+        zeroCrossingTime = dev / (samples[i-1] - samples[i]);         // The first zero crossing time point. From [i-1]th TO the [i]th sample. < 1 uS
+        beat = i;                                                     // Sampling step of the [i]th sample. In our case - time in mS
+                                                                      // For the common case the frequebcy of sampling should be introduced as a factor
       }
       if (cross == 18) {          
-        *frequency = 1000.0 * 9 / ( zeroCrossingTime + (i - 1 - beat) + 1 - dev / (samples[i-1] - samples[i]) ); // 1000, 999.7 with correction coeff.
+        *frequency = 1000.0 * 9 / ( zeroCrossingTime + (i - 1 - beat) + 1 - dev / (samples[i-1] - samples[i]) ); 
+        // (i-1)  - time point of the [i-1]th sample, beat - time point of the 'previous' [i]th sample by cross == 0
+        // dev/(sam[i-1] - sam[i]) - time TO the [i]th sample!!! -> 1 - dev/(s[i-1] - s[i]) - timi after [i-1] sample
         // 9 full sinis waves make 18 zero crossing events. The period of 9 waves is a sum of 
-        // zero crossint time (to the previous [i] sample + number of beats to the current [i-1] sample + time after [i-1] sample to the zero crossing event
+        // zero crossint time (TO the previous [i] sample + number of beats to the current [i-1] sample + time after [i-1] sample to the zero crossing event
       }
 
-      lastHalfWave = positiveHalfWave;
+      lastHalfWavePositive = halfWavePositive;
       cross++;
-    } // End if( positiveHalfWave != lastHalfWave )
+    } // End if( halfWavePositive != lastHalfWavePositive )
       
     dev *= dev;                           // squer value of 'dev'
     sampSum += dev;                       // sum of squers
